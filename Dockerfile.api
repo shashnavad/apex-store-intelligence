@@ -1,0 +1,18 @@
+FROM golang:1.21-alpine AS builder
+WORKDIR /src
+RUN apk add --no-cache gcc musl-dev
+COPY go.mod go.sum ./
+RUN go mod download
+COPY app ./app
+RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/store-api ./app
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates curl
+WORKDIR /app
+COPY --from=builder /bin/store-api /app/store-api
+COPY data ./data
+ENV DATA_DIR=/app/data
+ENV IPC_SOCKET_PATH=/tmp/store_intelligence.sock
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 CMD curl -fsS http://localhost:8080/health || exit 1
+CMD ["/app/store-api"]

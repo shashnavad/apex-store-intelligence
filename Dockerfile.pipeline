@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY pipeline ./pipeline
+COPY data ./data
+COPY scripts ./scripts
+ENV IPC_SOCKET_PATH=/tmp/store_intelligence.sock
+ENV PYTHONPATH=/app/pipeline:/app
+CMD ["bash", "-c", "sleep 5 && SIMULATE=${SIMULATE:-1} bash /app/pipeline/run.sh"]

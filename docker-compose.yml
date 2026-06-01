@@ -1,0 +1,42 @@
+services:
+  intelligence-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: store_intelligence_api
+    ports:
+      - "8080:8080"
+    volumes:
+      - shared-ipc-data:/tmp
+      - db-storage:/app/data
+    environment:
+      - GIN_MODE=release
+      - DATA_DIR=/app/data
+      - IPC_SOCKET_PATH=/tmp/store_intelligence.sock
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  detection-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    container_name: store_detection_pipeline
+    volumes:
+      - shared-ipc-data:/tmp
+      - ./data:/app/data:ro
+      - ./output:/app/output
+    environment:
+      - IPC_SOCKET_PATH=/tmp/store_intelligence.sock
+      - SIMULATE=1
+    depends_on:
+      intelligence-api:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  shared-ipc-data:
+  db-storage:

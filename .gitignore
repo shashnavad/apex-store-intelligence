@@ -1,0 +1,12 @@
+.DS_Store
+*.db
+*.db-*
+output/
+__pycache__/
+*.pyc
+.env
+.idea/
+.vscode/
+coverage.out
+bin/
+data/clips/

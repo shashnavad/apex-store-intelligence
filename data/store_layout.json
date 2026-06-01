@@ -1,0 +1,16 @@
+{
+  "stores": {
+    "STORE_BLR_002": {
+      "zones": [
+        {
+          "zone_id": "SKINCARE",
+          "polygon_normalized": [[0.1, 0.1], [0.5, 0.1], [0.5, 0.8], [0.1, 0.8]]
+        },
+        {
+          "zone_id": "BILLING_ZONE",
+          "polygon_normalized": [[0.6, 0.5], [0.95, 0.5], [0.95, 0.9], [0.6, 0.9]]
+        }
+      ]
+    }
+  }
+}
