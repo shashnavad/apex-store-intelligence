@@ -147,7 +147,11 @@ func main() {
 	go startUnixSocketServer(ctx, engine, socketPath)
 
 	router := newRouter(engine)
-	srv := &http.Server{Addr: ":8080", Handler: router}
+	addr := ":8080"
+	if port := os.Getenv("PORT"); port != "" {
+		addr = ":" + port
+	}
+	srv := &http.Server{Addr: addr, Handler: router}
 	go func() {
 		log.Println("Store Intelligence API listening on :8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

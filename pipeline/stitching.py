@@ -39,8 +39,11 @@ class SessionStitcher:
                 best_distance = self.spatial_threshold
 
                 for h_id, data in list(self.historical_tracks.items()):
-                    time_elapsed = now - data["exit_time"]
-                    
+                    exit_time = data.get("exit_time")
+                    if exit_time is None:
+                        continue
+                    time_elapsed = now - exit_time
+
                     if time_elapsed <= self.temporal_threshold_sec:
                         dist = self.compute_distance(centroid, data["last_centroid"])
                         if dist < best_distance:
@@ -56,6 +59,7 @@ class SessionStitcher:
                     stitched_id = f"STITCH_{int(now * 1000)}_{yolo_id}"
                     self.historical_tracks[stitched_id] = {
                         "original_ids": [yolo_id],
+                        "last_centroid": centroid,
                     }
 
                 self.historical_tracks[stitched_id]["last_centroid"] = centroid

@@ -144,6 +144,25 @@ go test ./app/... -cover
 
 Target: statement coverage above 70% on the `app` package.
 
+### Python pipeline and clip tests
+
+```bash
+pip install -r requirements.txt
+pytest tests/test_pipeline.py -v
+```
+
+Runs schema, PIP zone, and short (15 frame) processing on each file in `data/clips/`.
+
+### Challenge assertions (integration)
+
+```bash
+# API must be running, or pytest will start one on port 18080
+pytest tests/test_integration_api.py -v
+
+# Or against an existing server:
+python3 data/assertions.py http://localhost:8080
+```
+
 ### Integration chaos harness (optional)
 
 With the API running:

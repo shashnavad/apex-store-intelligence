@@ -67,6 +67,7 @@ func (m *MetricTracker) ApplyEvent(ev StoreEvent, ts time.Time) {
 		sess.Entered = true
 	case "REENTRY":
 		sess.Entered = true
+		sess.Closed = false
 	case "EXIT":
 		m.TotalExits++
 		sess.Closed = true
