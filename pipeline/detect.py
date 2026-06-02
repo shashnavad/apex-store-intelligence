@@ -155,7 +155,8 @@ class DetectionPipeline:
                     if zone == "BILLING_ZONE":
                         state["queue_frames"] = state.get("queue_frames", 0) + 1
                         if not state["queue_joined"] and state["queue_frames"] >= int(3 * fps):
-                            self._emit("BILLING_QUEUE_JOIN", visitor_id, zone, is_staff=is_staff, confidence=det.get("confidence", 0.9))
+                            queue_depth = sum(1 for s in self.active_tracks.values() if s["zone"] == "BILLING_ZONE")
+                            self._emit("BILLING_QUEUE_JOIN", visitor_id, zone, is_staff=is_staff, confidence=det.get("confidence", 0.9), queue_depth=queue_depth)
                             state["queue_joined"] = True
                     else:
                         state["queue_frames"] = 0
