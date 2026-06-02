@@ -31,6 +31,8 @@ curl -s http://localhost:8080/stores/STORE_BLR_002/metrics | python3 -m json.too
 
 The API and simulated detection pipeline start together. With no video files present, the pipeline runs in `SIMULATE=1` mode and streams sample events over the Unix socket.
 
+View live store metrics in a browser at `http://localhost:8080/dashboard`.
+
 ## Dataset placement
 
 Copy challenge assets into `data/`:
@@ -121,6 +123,7 @@ python3 scripts/dashboard.py
 | GET | `/stores/{id}/funnel` | Session funnel with drop-off percentages |
 | GET | `/stores/{id}/heatmap` | Zone frequency and normalized dwell |
 | GET | `/stores/{id}/anomalies` | Queue spike, conversion drop, dead zone |
+| GET | `/dashboard/{id}` | Live browser dashboard for store metrics and anomalies |
 | GET | `/health` | Status, per-store last event, `STALE_FEED` if lag > 10 min |
 | GET | `/metrics` | Prometheus metrics |
 

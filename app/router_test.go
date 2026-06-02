@@ -38,6 +38,7 @@ func TestRouterEndpoints(t *testing.T) {
 		"/stores/STORE_BLR_002/funnel",
 		"/stores/STORE_BLR_002/heatmap",
 		"/stores/STORE_BLR_002/anomalies",
+		"/dashboard/STORE_BLR_002",
 		"/health",
 		"/metrics",
 	} {

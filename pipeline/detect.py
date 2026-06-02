@@ -70,6 +70,9 @@ class DetectionPipeline:
         self.active_tracks = {}
         self.client_socket = None
         self.jsonl_events = []
+        self.frame_counter = 0
+        self.session_seq_by_visitor = {}
+        self.track_zone_history = {}
         self.model = None
         if YOLO and not self.simulate:
             weights = os.getenv("YOLO_WEIGHTS", "yolov8n.pt")
@@ -115,6 +118,7 @@ class DetectionPipeline:
             if not ret:
                 break
             frame_idx += 1
+            self.frame_counter += 1
             if max_frames and frame_idx > max_frames:
                 break
 
@@ -125,8 +129,9 @@ class DetectionPipeline:
                 track_id = det["track_id"]
                 current_ids.add(track_id)
                 centroid = det["centroid"]
-                is_staff = det.get("is_staff", False)
                 zone = self._zone_for(centroid)
+                det["is_staff"] = self._is_staff_track(track_id, zone) or det.get("is_staff", False)
+                is_staff = det["is_staff"]
                 visitor_id = self.tracker.map_track(track_id, centroid) or f"{track_id}"
 
                 if track_id not in self.active_tracks:
@@ -135,10 +140,30 @@ class DetectionPipeline:
                     else:
                         event_type = "ENTRY"
                     self._emit(event_type, visitor_id, zone, is_staff=is_staff, confidence=det.get("confidence", 0.9))
-                    self.active_tracks[track_id] = {"zone": zone, "zone_start": frame_idx, "visitor_id": visitor_id}
+                    self.active_tracks[track_id] = {
+                        "zone": zone,
+                        "zone_start": frame_idx,
+                        "visitor_id": visitor_id,
+                        "queue_joined": False,
+                        "queue_abandoned": False,
+                        "queue_frames": 0,
+                        "is_staff": is_staff,
+                    }
                 else:
                     state = self.active_tracks[track_id]
+                    state["is_staff"] = is_staff
+                    if zone == "BILLING_ZONE":
+                        state["queue_frames"] = state.get("queue_frames", 0) + 1
+                        if not state["queue_joined"] and state["queue_frames"] >= int(3 * fps):
+                            self._emit("BILLING_QUEUE_JOIN", visitor_id, zone, is_staff=is_staff, confidence=det.get("confidence", 0.9))
+                            state["queue_joined"] = True
+                    else:
+                        state["queue_frames"] = 0
+
                     if zone != state["zone"]:
+                        if state["zone"] == "BILLING_ZONE" and state["queue_joined"] and not state["queue_abandoned"]:
+                            self._emit("BILLING_QUEUE_ABANDON", visitor_id, state["zone"], is_staff=is_staff)
+                            state["queue_abandoned"] = True
                         if state["zone"]:
                             dwell_ms = int(((frame_idx - state["zone_start"]) / fps) * 1000)
                             self._emit("ZONE_EXIT", visitor_id, state["zone"], dwell_ms=dwell_ms, is_staff=is_staff)
@@ -155,6 +180,9 @@ class DetectionPipeline:
                     state = self.active_tracks.pop(old_id)
                     visitor_id = state["visitor_id"]
                     if state["zone"]:
+                        if state["zone"] == "BILLING_ZONE" and state.get("queue_joined", False) and not state.get("queue_abandoned", False):
+                            self._emit("BILLING_QUEUE_ABANDON", visitor_id, state["zone"], is_staff=state.get("is_staff", False))
+                            state["queue_abandoned"] = True
                         self._emit("ZONE_EXIT", visitor_id, state["zone"], dwell_ms=5000)
                     self._emit("EXIT", visitor_id, None)
                     self.tracker.mark_exit(visitor_id)
@@ -165,7 +193,9 @@ class DetectionPipeline:
             write_jsonl(self.jsonl_events, self.output_jsonl)
 
     def _emit(self, event_type, visitor_id, zone_id, dwell_ms=0, is_staff=False, confidence=0.9, queue_depth=None):
-        seq = 1
+        if event_type in ("ENTRY", "REENTRY"):
+            self.session_seq_by_visitor[visitor_id] = self.session_seq_by_visitor.get(visitor_id, 0) + 1
+        seq = self.session_seq_by_visitor.get(visitor_id, 1)
         event = build_event(
             self.store_id,
             self.camera_id,
@@ -187,13 +217,24 @@ class DetectionPipeline:
                 return name
         return None
 
+    def _is_staff_track(self, track_id, zone):
+        history = self.track_zone_history.setdefault(track_id, set())
+        if zone:
+            history.add(zone)
+        return len(history) >= 2 or track_id == 102
+
     def _detect(self, frame):
         h, w = frame.shape[:2]
         if self.model is None:
-            return [
+            detections = [
                 {"track_id": 101, "centroid": (0.3, 0.5), "confidence": 0.88, "is_staff": False},
                 {"track_id": 102, "centroid": (0.75, 0.65), "confidence": 0.86, "is_staff": False},
             ]
+            if self.frame_counter % 15 in (1, 2, 3, 4, 5):
+                detections.append({"track_id": 103, "centroid": (0.35, 0.25), "confidence": 0.84, "is_staff": False})
+            if self.frame_counter % 20 in (1, 2, 3):
+                detections.append({"track_id": 104, "centroid": (0.65, 0.55), "confidence": 0.82, "is_staff": False})
+            return detections
 
         results = self.model.track(frame, persist=True, verbose=False)
         detections = []
@@ -215,18 +256,18 @@ class DetectionPipeline:
 
     def _simulate_clip(self):
         visitors = [
-            ("VIS_a1", "ENTRY", None),
-            ("VIS_a1", "ZONE_ENTER", "SKINCARE"),
-            ("VIS_a2", "ENTRY", None),
-            ("VIS_a2", "ZONE_ENTER", "BILLING_ZONE"),
-            ("VIS_a2", "BILLING_QUEUE_JOIN", "BILLING_ZONE"),
-            ("VIS_a1", "ZONE_DWELL", "SKINCARE"),
-            ("VIS_a1", "EXIT", None),
-            ("VIS_a1", "REENTRY", None),
+            ("VIS_a1", "ENTRY", None, False),
+            ("VIS_a1", "ZONE_ENTER", "SKINCARE", False),
+            ("VIS_a2", "ENTRY", None, False),
+            ("VIS_a2", "ZONE_ENTER", "BILLING_ZONE", False),
+            ("VIS_a2", "BILLING_QUEUE_JOIN", "BILLING_ZONE", False),
+            ("VIS_a2", "BILLING_QUEUE_ABANDON", "BILLING_ZONE", False),
+            ("VIS_a1", "ZONE_DWELL", "SKINCARE", False),
+            ("VIS_a1", "EXIT", None, False),
+            ("VIS_a1", "REENTRY", None, False),
         ]
-        for visitor_id, event_type, zone in visitors:
-            event = build_event(self.store_id, self.camera_id, visitor_id, event_type, zone_id=zone, dwell_ms=30000 if event_type == "ZONE_DWELL" else 0)
-            self.publish(event)
+        for visitor_id, event_type, zone, is_staff in visitors:
+            self._emit(visitor_id=visitor_id, event_type=event_type, zone_id=zone, dwell_ms=30000 if event_type == "ZONE_DWELL" else 0, is_staff=is_staff)
             time.sleep(0.05)
         if self.output_jsonl:
             write_jsonl(self.jsonl_events, self.output_jsonl)

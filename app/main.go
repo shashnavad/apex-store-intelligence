@@ -27,6 +27,58 @@ var (
 	)
 )
 
+const dashboardPage = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Store Intelligence Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; background: #f7fafc; color:#111; }
+    header { margin-bottom: 1rem; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:1rem; margin-bottom:1rem; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+    .grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); }
+    pre { background:#edf2f7; padding:1rem; border-radius:8px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Store Intelligence</h1>
+    <p>Live metrics for <strong id="store-id"></strong></p>
+  </header>
+  <div class="grid">
+    <div class="card"><h2>Metrics</h2><pre id="metrics">Loading...</pre></div>
+    <div class="card"><h2>Funnel</h2><pre id="funnel">Loading...</pre></div>
+    <div class="card"><h2>Anomalies</h2><pre id="anomalies">Loading...</pre></div>
+  </div>
+  <script>
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const storeId = pathParts[pathParts.length - 1] || 'STORE_BLR_002';
+    document.getElementById('store-id').textContent = storeId;
+
+    async function fetchJson(path) {
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(res.statusText);
+        return await res.json();
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    async function refresh() {
+      const metrics = await fetchJson('/stores/' + storeId + '/metrics');
+      const funnel = await fetchJson('/stores/' + storeId + '/funnel');
+      const anomalies = await fetchJson('/stores/' + storeId + '/anomalies');
+      document.getElementById('metrics').textContent = JSON.stringify(metrics, null, 2);
+      document.getElementById('funnel').textContent = JSON.stringify(funnel, null, 2);
+      document.getElementById('anomalies').textContent = JSON.stringify(anomalies, null, 2);
+    }
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>`
+
 func init() {
 	prometheus.MustRegister(ingestCounter, requestLatency)
 }
@@ -57,6 +109,12 @@ func newRouter(engine *Engine) *gin.Engine {
 	router := gin.New()
 	router.Use(structuredLogging())
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	router.GET("/dashboard", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/dashboard/STORE_BLR_002")
+	})
+	router.GET("/dashboard/:id", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(dashboardPage))
+	})
 
 	router.POST("/events/ingest", func(c *gin.Context) {
 		start := time.Now()
@@ -70,12 +128,14 @@ func newRouter(engine *Engine) *gin.Engine {
 			return
 		}
 
+		c.Set("store_id", firstStore(batch))
+		c.Set("event_count", len(batch))
 		res, err := engine.IngestBatch(batch)
 		requestLatency.WithLabelValues("/events/ingest").Observe(float64(time.Since(start).Milliseconds()))
 
 		if err != nil && strings.Contains(err.Error(), "database unavailable") {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error":   "database unavailable",
+				"error":    "database unavailable",
 				"trace_id": c.GetString("trace_id"),
 			})
 			return
@@ -186,8 +246,13 @@ func structuredLogging() gin.HandlerFunc {
 			}
 		}
 
+		storeID := c.Param("id")
+		if storeID == "" {
+			storeID = c.GetString("store_id")
+		}
+
 		log.Printf(`{"trace_id":"%s","store_id":"%s","endpoint":"%s","latency_ms":%d,"event_count":%d,"status_code":%d}`,
-			traceID, c.Param("id"), c.Request.URL.Path, time.Since(start).Milliseconds(), eventCount, c.Writer.Status())
+			traceID, storeID, c.Request.URL.Path, time.Since(start).Milliseconds(), eventCount, c.Writer.Status())
 	}
 }
 

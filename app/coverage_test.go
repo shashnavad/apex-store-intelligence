@@ -67,9 +67,13 @@ func TestConversionDropAnomaly(t *testing.T) {
 		tracker.ApplyEvent(StoreEvent{EventID: "c-" + id, VisitorID: id, EventType: "ENTRY"}, now)
 	}
 	anomalies := tracker.DetectAnomalies("STORE_BLR_002", 0.9)
+	found := false
 	for _, a := range anomalies {
 		if a["type"] == "CONVERSION_DROP" {
-			return
+			found = true
 		}
+	}
+	if !found {
+		t.Fatalf("expected CONVERSION_DROP anomaly, got %v", anomalies)
 	}
 }

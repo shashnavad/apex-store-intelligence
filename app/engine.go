@@ -10,13 +10,13 @@ import (
 
 // Engine coordinates persistence, idempotency, and per-store trackers.
 type Engine struct {
-	db            *sql.DB
-	trackers      map[string]*MetricTracker
-	idempotency   sync.Map
-	posTxns       []POSTransaction
-	baselineConv  map[string]float64
-	mu            sync.RWMutex
-	socketPath    string
+	db             *sql.DB
+	trackers       map[string]*MetricTracker
+	idempotency    sync.Map
+	posTxns        []POSTransaction
+	baselineConv   map[string]float64
+	mu             sync.RWMutex
+	socketPath     string
 	eventsIngested int64
 }
 
@@ -77,7 +77,9 @@ func (e *Engine) ProcessEvent(ev StoreEvent) error {
 	tracker := e.tracker(ev.StoreID)
 	tracker.Lock()
 	tracker.ApplyEvent(ev, ts)
-	correlatePOS(tracker, ev.StoreID, e.posTxns)
+	if ev.EventType == "BILLING_QUEUE_JOIN" {
+		correlatePOS(tracker, ev.StoreID, e.posTxns)
+	}
 	tracker.Unlock()
 
 	e.eventsIngested++
@@ -121,13 +123,13 @@ func (e *Engine) Metrics(storeID string) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"store_id":         storeID,
-		"unique_visitors":  tracker.UniqueVisitorCount(),
-		"conversion_rate":  tracker.ConversionRate(converted),
-		"avg_dwell_by_zone": zoneDwell,
-		"queue_depth":      tracker.ActiveQueueSize,
-		"abandonment_rate": abandonRate,
-		"data_confidence":  tracker.DataConfidence(),
+		"store_id":           storeID,
+		"unique_visitors":    tracker.UniqueVisitorCount(),
+		"conversion_rate":    tracker.ConversionRate(converted),
+		"avg_dwell_per_zone": zoneDwell,
+		"queue_depth":        tracker.ActiveQueueSize,
+		"abandonment_rate":   abandonRate,
+		"data_confidence":    tracker.DataConfidence(),
 	}
 }
 
@@ -146,9 +148,9 @@ func (e *Engine) Heatmap(storeID string) map[string]interface{} {
 	tracker.RLock()
 	defer tracker.RUnlock()
 	return map[string]interface{}{
-		"store_id":         storeID,
-		"zones":            tracker.HeatmapZones(),
-		"data_confidence":  tracker.DataConfidence(),
+		"store_id":        storeID,
+		"zones":           tracker.HeatmapZones(),
+		"data_confidence": tracker.DataConfidence(),
 	}
 }
 
@@ -192,10 +194,10 @@ func (e *Engine) Health() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"status":                  status,
-		"last_event_by_store":     stores,
-		"database_connection":     dbStatus,
-		"events_ingested_total":   e.eventsIngested,
+		"status":                status,
+		"last_event_by_store":   stores,
+		"database_connection":   dbStatus,
+		"events_ingested_total": e.eventsIngested,
 	}
 }
 

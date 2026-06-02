@@ -20,6 +20,7 @@ type SessionState struct {
 type MetricTracker struct {
 	sync.RWMutex
 	UniqueVisitors  map[string]struct{}
+	SeenVisitors    map[string]struct{}
 	ZoneDwellSums   map[string]int64
 	ZoneHitCounts   map[string]int64
 	ZoneLastVisit   map[string]time.Time
@@ -34,6 +35,7 @@ type MetricTracker struct {
 func newMetricTracker() *MetricTracker {
 	return &MetricTracker{
 		UniqueVisitors: make(map[string]struct{}),
+		SeenVisitors:   make(map[string]struct{}),
 		ZoneDwellSums:  make(map[string]int64),
 		ZoneHitCounts:  make(map[string]int64),
 		ZoneLastVisit:  make(map[string]time.Time),
@@ -58,6 +60,9 @@ func (m *MetricTracker) ApplyEvent(ev StoreEvent, ts time.Time) {
 
 	m.LastIngestTime = ts
 	m.UniqueVisitors[ev.VisitorID] = struct{}{}
+	if _, ok := m.SeenVisitors[ev.VisitorID]; !ok {
+		m.SeenVisitors[ev.VisitorID] = struct{}{}
+	}
 	sess := m.sessionFor(ev.VisitorID)
 	sess.LastActivity = ts
 
@@ -106,12 +111,16 @@ func (m *MetricTracker) UniqueVisitorCount() int {
 	return len(m.UniqueVisitors)
 }
 
+func (m *MetricTracker) TotalUniqueVisitorCount() int {
+	return len(m.SeenVisitors)
+}
+
 func (m *MetricTracker) DataConfidence() bool {
-	return m.UniqueVisitorCount() >= 20
+	return m.TotalUniqueVisitorCount() >= 20
 }
 
 func (m *MetricTracker) ConversionRate(converted int) float64 {
-	total := m.UniqueVisitorCount()
+	total := m.TotalUniqueVisitorCount()
 	if total == 0 {
 		return 0
 	}
@@ -195,7 +204,7 @@ func (m *MetricTracker) DetectAnomalies(storeID string, baselineConversion float
 	}
 
 	current := m.ConversionRate(countConverted(m.Sessions))
-	if baselineConversion > 0 && current < baselineConversion*0.7 && m.UniqueVisitorCount() >= 5 {
+	if baselineConversion > 0 && current < baselineConversion*0.7 && m.TotalUniqueVisitorCount() >= 5 {
 		out = append(out, map[string]interface{}{
 			"type":             "CONVERSION_DROP",
 			"severity":         "WARN",

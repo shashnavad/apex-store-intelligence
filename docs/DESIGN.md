@@ -20,7 +20,7 @@ CCTV clips / simulation
   Go Engine  (validate, dedupe, SQLite WAL, in-memory rollups)
         |
         v
-  REST API  (/metrics, /funnel, /heatmap, /anomalies, /health)
+  REST API  (/metrics, /funnel, /heatmap, /anomalies, /health, /dashboard)
         |
         v
   Dashboard / Prometheus / on-call tools
