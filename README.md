@@ -122,15 +122,13 @@ python3 scripts/replay_events.py http://localhost:8080 output/events/*.jsonl
 | GET | `/health` | Status, per-store last event, `STALE_FEED` if lag > 10 min |
 | GET | `/metrics` | Prometheus metrics |
 
-Example:
+### Ingestion Example
+
+To replay individual JSONL log events into the batch engine:
 
 ```bash
-curl -s -X POST http://localhost:8080/events/ingest \
-  -H 'Content-Type: application/json' \
-  -d @data/sample_events.jsonl
+python3 scripts/replay_events.py http://localhost:8080 data/sample_events.jsonl
 ```
-
-Note: ingest expects a JSON array. For JSONL files use `scripts/replay_events.py`.
 
 ## Tests
 
