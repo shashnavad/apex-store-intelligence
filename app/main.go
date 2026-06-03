@@ -167,7 +167,9 @@ func newRouter(engine *Engine) *gin.Engine {
 
 	router.GET("/stores/:id/metrics", func(c *gin.Context) {
 		start := time.Now()
-		defer requestLatency.WithLabelValues("/stores/:id/metrics").Observe(float64(time.Since(start).Milliseconds()))
+		defer func() {
+			requestLatency.WithLabelValues("/stores/:id/metrics").Observe(float64(time.Since(start).Milliseconds()))
+		}()
 		c.JSON(http.StatusOK, engine.Metrics(c.Param("id")))
 	})
 
