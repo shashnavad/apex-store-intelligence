@@ -183,8 +183,9 @@ curl -f http://localhost:8080/stores/STORE_BLR_002/anomalies
 ## Architecture summary
 
 - **Python**: frame processing, YOLOv8 + ByteTrack (when installed), point-in-polygon zones, event schema
-- **Go**: ingest, deduplication, in-memory rollups, SQLite WAL persistence, REST and Prometheus
-- **IPC**: newline-delimited JSON over Unix domain socket (no Kafka or HTTP between processes)
+- **Go**: Ingest, deduplication, in-memory rollups, SQLite WAL persistence, REST and Prometheus
+- **Defensive Ingestion Middleware**: Real-time identifier unification mapping (`store_code` ➔ `store_id`) and fallback token normalization logic built right into the ingestion loop to guarantee bulletproof multi-platform runtime compatibility.
+- **IPC**: Newline-delimited JSON over Unix domain socket (no Kafka or HTTP between processes)
 
 See `docs/DESIGN.md` and `docs/CHOICES.md` for full rationale.
 

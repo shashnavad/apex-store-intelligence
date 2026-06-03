@@ -1,14 +1,96 @@
 {
   "stores": {
-    "STORE_BLR_002": {
+    "STORE_BLR_001": {
+      "aliases": [
+        "ST1008",
+        "store_1008",
+        "STORE_1008"
+      ],
+      "metadata": {
+        "city": "Bengaluru",
+        "name": "Apex Retail - Indiranagar (Store 1)",
+        "layout_type": "Wide Single-Room Floor Plan",
+        "primary_focus": "Front of House Optimization"
+      },
       "zones": [
         {
-          "zone_id": "SKINCARE",
-          "polygon_normalized": [[0.1, 0.1], [0.5, 0.1], [0.5, 0.8], [0.1, 0.8]]
+          "zone_id": "ENTRY_EXIT",
+          "polygon_normalized": [
+            [0.0000, 0.5800],
+            [0.1200, 0.5800],
+            [0.1200, 0.8500],
+            [0.0000, 0.8500]
+          ]
+        },
+        {
+          "zone_id": "F.O.H",
+          "polygon_normalized": [
+            [0.0500, 0.0500],
+            [0.9500, 0.0500],
+            [0.9500, 0.9500],
+            [0.0500, 0.9500]
+          ]
         },
         {
           "zone_id": "BILLING_ZONE",
-          "polygon_normalized": [[0.6, 0.5], [0.95, 0.5], [0.95, 0.9], [0.6, 0.9]]
+          "polygon_normalized": [
+            [0.8000, 0.3000],
+            [0.9500, 0.3000],
+            [0.9500, 0.6000],
+            [0.8000, 0.6000]
+          ]
+        }
+      ]
+    },
+    "STORE_BLR_002": {
+      "aliases": [
+        "ST1076",
+        "store_1076",
+        "STORE_1076",
+        "PURPLLE_MUM_1076"
+      ],
+      "metadata": {
+        "city": "Bengaluru",
+        "name": "Apex Retail - Koramangala (Store 2)",
+        "layout_type": "Deep Split-Zone Floor Plan",
+        "primary_focus": "Dual FOH and BOH Tracking"
+      },
+      "zones": [
+        {
+          "zone_id": "ENTRY_EXIT",
+          "polygon_normalized": [
+            [0.4400, 0.9200],
+            [0.5600, 0.9200],
+            [0.5600, 0.9800],
+            [0.4400, 0.9800]
+          ]
+        },
+        {
+          "zone_id": "F.O.H",
+          "polygon_normalized": [
+            [0.0900, 0.5000],
+            [0.9200, 0.5000],
+            [0.9200, 0.9400],
+            [0.0900, 0.9400]
+          ]
+        },
+        {
+          "zone_id": "B.O.H",
+          "polygon_normalized": [
+            [0.5200, 0.0200],
+            [0.9200, 0.0200],
+            [0.9200, 0.5000],
+            [0.5200, 0.5000]
+          ]
+        },
+        {
+          "zone_id": "BILLING_ZONE",
+          "polygon_normalized": [
+            [0.4600, 0.5100],
+            [0.5800, 0.5100],
+            [0.5800, 0.6100],
+            [0.4600, 0.6100]
+          ]
         }
       ]
     }

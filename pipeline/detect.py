@@ -20,6 +20,16 @@ try:
 except ImportError:
     YOLO = None
 
+STORE_ID_MAP = {
+    "ST1008": "STORE_BLR_001",
+    "store_1008": "STORE_BLR_001",
+    "ST1076": "STORE_BLR_002",
+    "store_1076": "STORE_BLR_002"
+}
+
+def normalize_store_id(raw_id: str) -> str:
+    # Fallback to the original ID if it's already normalized (e.g., STORE_BLR_002)
+    return STORE_ID_MAP.get(raw_id, raw_id)
 
 def load_zones(layout_path, store_id):
     if not Path(layout_path).exists():
@@ -60,7 +70,7 @@ def point_in_polygon(point, polygon):
 class DetectionPipeline:
     def __init__(self, video_path, store_id, camera_id, layout_path="data/store_layout.json", socket_path="/tmp/store_intelligence.sock", output_jsonl=None, simulate=False):
         self.video_path = video_path
-        self.store_id = store_id
+        self.store_id = normalize_store_id(store_id)
         self.camera_id = camera_id
         self.socket_path = socket_path
         self.output_jsonl = output_jsonl
@@ -285,6 +295,7 @@ def main():
     parser.add_argument("--simulate", action="store_true")
     parser.add_argument("--max-frames", type=int, default=0)
     args = parser.parse_args()
+    args.store_id = normalize_store_id(args.store_id)
 
     pipeline = DetectionPipeline(
         video_path=args.video,

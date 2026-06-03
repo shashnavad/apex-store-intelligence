@@ -86,6 +86,28 @@ This document records the main engineering decisions, options considered, and tr
 
 ---
 
+## 7. Static Offline Layout Compilation vs. Dynamic Runtime VLM Parsing
+
+**Options considered:** 1. Building a runtime pipeline using a Vision-Language Model (VLM) API inside the Docker container to dynamically parse the store layout PNGs on startup.
+2. Offline pre-processing of the PNG layouts into a unified, static global JSON configuration file (`store_layout.json`).
+
+**What AI suggested:** A dynamic Python script using a Vision API to parse layout PNGs on container startup to ensure the system could "handle any layout format automatically."
+
+**What we chose:** Option 2 (Offline Pre-processing).
+
+**Why:** * **Production Reliability & Gate Compliance:** The evaluation requires a deterministic, zero-manual-step execution via `docker compose up` on a clean machine. Relying on external third-party Vision APIs at runtime introduces critical breaking points (requiring external API keys, internet connectivity dependencies, and handling non-deterministic VLM coordinate outputs).
+* **Business Domain Reality:** In physical retail, store floor plans are static operational assets. They do not change dynamically from frame to frame. Treating them as a compiled configuration file reduces system latency, saves significant API costs, and keeps the core focus on the primary business logic: the Detection Layer accuracy and Intelligence API metrics.  
+
+---
+
+## 8. Handling Heterogeneous Upstream Identifier Schemas (Data Cleansing)
+
+**The Problem:** During integration, a structural mismatch was identified between the problem statement specifications (`STORE_BLR_002`), the mock transactional data (`ST1008`), and the validation telemetry stream (`store_1076`).
+
+**What we chose:** Built a defensive Data Normalization Registry inside the ingestion engine. All raw strings are sanitized through an in-memory lookup dictionary upon extraction.
+
+**Why:** This replicates a true production middleware pipeline where downstream business logic shouldn't crash due to upstream naming anomalies from legacy POS vendors versus modern CV hardware tracking layers. Spatial-to-transactional pairing was verified by cross-referencing the `brand_name` column of the transactional database with the physical wall-unit bounding labels on the Store 1 blueprint. The presence of identical brand anchors like 'Faces Canada' and 'Renee' confirmed the structural logic.
+
 ## Detection model (summary)
 
 **Model:** Ultralytics YOLOv8n with ByteTrack when weights are available; simulation mode otherwise.

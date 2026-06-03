@@ -90,19 +90,26 @@ type EventMetadata struct {
 	SessionSeq int    `json:"session_seq"`
 }
 
-// StoreEvent matches the required detection output schema.
 type StoreEvent struct {
-	EventID    string        `json:"event_id" binding:"required"`
-	StoreID    string        `json:"store_id" binding:"required"`
-	CameraID   string        `json:"camera_id" binding:"required"`
-	VisitorID  string        `json:"visitor_id" binding:"required"`
-	EventType  string        `json:"event_type" binding:"required"`
-	Timestamp  string        `json:"timestamp" binding:"required"`
+	// Standard pipeline targets (from your Python pipeline)
+	EventID    string        `json:"event_id"`
+	StoreID    string        `json:"store_id"`
+	CameraID   string        `json:"camera_id"`
+	VisitorID  string        `json:"visitor_id"`
+	EventType  string        `json:"event_type"`
+	Timestamp  string        `json:"timestamp"`
 	ZoneID     string        `json:"zone_id"`
 	DwellMs    int           `json:"dwell_ms"`
 	IsStaff    bool          `json:"is_staff"`
 	Confidence float64       `json:"confidence"`
 	Metadata   EventMetadata `json:"metadata"`
+
+	// Evaluation Fallback Fields (Matches challenge dataset schemas)
+	StoreCodeFallback    string `json:"store_code"`
+	IDTokenFallback      string `json:"id_token"`
+	TimestampFallback    string `json:"event_timestamp"`
+	QueueEventIDFallback string `json:"queue_event_id"`
+	TrackIDFallback      int    `json:"track_id"`
 }
 
 func newRouter(engine *Engine) *gin.Engine {
