@@ -20,19 +20,21 @@ def run_integration_chaos_harness():
         print(f"Could not connect to Go core API: {err}")
         return False
 
-    # Step 2: Simulate defensive processing by streaming malformed JSON payloads over IPC
+    # Step 2: Simulate defensive processing by streaming malformed JSON payloads over HTTP
     print("Testing system recovery against malformed payloads...")
+    ingest_url = "http://localhost:8080/events/ingest"
     try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(socket_path)
+        # 1. Send malformed/corrupted data fragments to verify API resilience
+        try:
+            requests.post(ingest_url, data='{"event_id": "err_1", "store_id": "BLR_02", "visitor_id": ', headers={"Content-Type": "application/json"}, timeout=2)
+            requests.post(ingest_url, data='INVALID_RAW_BYTE_STREAM_TOKEN_CORRUPT', headers={"Content-Type": "application/json"}, timeout=2)
+        except requests.exceptions.RequestException:
+            # Code should gracefully reject bad payloads (400 Bad Request) without crashing the server
+            pass
         
-        # Stream corrupt and incomplete data fragments
-        sock.sendall(b'{"event_id": "err_1", "store_id": "BLR_02", "visitor_id": \n')
-        sock.sendall(b'INVALID_RAW_BYTE_STREAM_TOKEN_CORRUPT\n')
-        
-        # Follow up with a well-formed event to verify the system recovers and keeps running
+        # 2. Follow up with a well-formed event to verify the system recovers and keeps running
         valid_recovery_event = {
-            "event_id": "recovery_verification_01",
+            "event_id": "recovery_verification_02",
             "store_id": "STORE_BLR_002",
             "camera_id": "CAM_01",
             "visitor_id": "VIS_CHAOS_USER",
@@ -41,12 +43,16 @@ def run_integration_chaos_harness():
             "is_staff": False,
             "confidence": 0.99
         }
-        sock.sendall((json.dumps(valid_recovery_event) + "\n").encode("utf-8"))
-        sock.close()
+        
+        # Wrap in a JSON array as expected by the Go batch endpoint signature
+        response = requests.post(ingest_url, json=[valid_recovery_event], timeout=2)
+        if response.status_code not in [200, 201]:
+            print(f"Server rejected valid recovery payload with status code: {response.status_code}")
+            return False
+            
     except Exception as e:
-        print(f"Socket communication testing error: {e}")
+        print(f"HTTP communication testing error: {e}")
         return False
-
     # Step 3: Validate database persistence and metric collection
     time.sleep(1) # Allow processing time for async operations to complete
     metrics_url = "http://localhost:8080/stores/STORE_BLR_002/metrics"
