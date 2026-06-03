@@ -105,7 +105,7 @@ Environment variables:
 
 ```bash
 pip install requests
-python3 scripts/replay_events.py http://localhost:8080 output/events/*.jsonl
+python3 scripts/replay_events.py http://localhost:8080 data/sample_events.jsonl
 ```
 
 ## API endpoints
